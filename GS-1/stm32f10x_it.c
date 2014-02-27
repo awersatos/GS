@@ -23,7 +23,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x_it.h"
-
+#include "main.h"
 /** @addtogroup STM32F10x_StdPeriph_Template
   * @{
   */
@@ -142,6 +142,41 @@ void SysTick_Handler(void)
 /*  available peripheral interrupt handler's name please refer to the startup */
 /*  file (startup_stm32f10x_xx.s).                                            */
 /******************************************************************************/
+
+void EXTI9_5_IRQHandler(void) //Внешние прерывания линии 5-9
+{
+ if(EXTI_GetITStatus(EXTI_Line5) != RESET) 
+  {
+  if (typ_pin[10] == 1) error |= 4;   // если включен газоанализатор на данный пин
+                                      // ОШИБКА сработал газоанализатор
+    
+  EXTI_ClearITPendingBit(EXTI_Line5); //Очистка флага прерывания
+  }
+  
+//------------------------------------------------------------------------------  
+  
+ if(EXTI_GetITStatus(EXTI_Line6) != RESET) 
+  {
+  if (typ_pin[11] == 1) error |= 2; // если включен газоанализатор на данный пин
+                                    //ОШИБКА сработал газоанализатор     
+  EXTI_ClearITPendingBit(EXTI_Line6); //Очистка флага прерывания
+  }
+
+}
+//==============================================================================
+void TIM3_IRQHandler(void) //Прерывания таймера 3
+{
+//if (timmin[index]!=0)
+timmin[index] = timmin[index]+1;
+GPIO_SetBits(GPIOC, GPIO_Pin_2);
+
+TIM_ClearITPendingBit(TIM3, TIM_IT_CC1); //Сбрасываем флаг UIF
+}
+//==============================================================================
+void DMA1_Channel1_IRQHandler(void)
+{
+  
+}
 
 /**
   * @brief  This function handles PPP interrupt request.
