@@ -6,16 +6,24 @@
 #include "stm32f10x.h"
 
 //**************Макроопределения************************************************
+#define BufferSize 256       //Размер буферов    байт
+
 
 
 //**************Определение собственных типов***********************************
 
 //**************Глобальные переменные доступные из других файлов****************
+extern uint32_t delay_Counter; //Интервал программы задержки
+extern char TxBuffer[BufferSize+1]; //Передающий Bluetooth буфер USART1
+extern char RxBuffer[BufferSize+1]; //Приемный Bluetooth буфер USART1
 extern uint16_t max[8-1], min[8-1], timmin[8-1];
 extern uint32_t error;
 extern uint8_t index;
 extern uint16_t typ_pin[13-1];
 //*************Объявление испльзуемых функций***********************************
+void delay_ms(uint16_t msec); //Задержка в милисекундах
 void Dathiki(void);
 void Temperature(uint16_t temp); //функция сигнализации минимальной температуры
+void SendString_InUnit(const char *str); //Функция отправки строки навнешний модуль через UART
+void Reset_rxDMA_ClearBufer(void); //Сброс приемного DMA канала и очистка буфера приема
 /***************************КОНЕЦ ФАЙЛА****************************************/

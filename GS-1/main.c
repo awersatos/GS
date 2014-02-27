@@ -12,8 +12,14 @@
 #include "eeprom.h"
 #include "stm32f10x.h"
 #include "main.h"
-
+#include <string.h>
 //************* Инициализация глобальных переменных ****************************
+uint32_t delay_Counter; //Интервал программы задержки
+
+char TxBuffer[BufferSize+1]; //Передающий Bluetooth буфер USART1
+char RxBuffer[BufferSize+1]; //Приемный Bluetooth буфер USART1
+
+
 uint16_t adc_buffer[11-1]; //
 uint16_t typ_pin[13-1]; //0-выключено >1-режимы
 
@@ -43,7 +49,9 @@ static void ADC_Configuration(void);//Инициализация АЦП
 static void DMA_Configuration(void); //Инициализация каналов DMA
 static void TIMER_Configuration(void);//Инициализация таймеров
 static void UART_Configuration(void);    //Инициализация USART
+static void ClearBufer(char *buf); //Функция очистки буфера
 //******************************************************************************
+
 
 //==============================================================================
                   /*НАЧАЛО ИСПОЛНЯЕМОГО КОДА ПРОГРАММЫ*/
@@ -63,6 +71,8 @@ ADC_Configuration();//Инициализация АЦП
 DMA_Configuration(); //Инициализация каналов DMA
 TIMER_Configuration();//Инициализация таймеров
 UART_Configuration();//Инициализация USART
+SysTick_Config(SystemCoreClock / 1000); //Прерывание системного таймера 1мС
+NVIC_SetPriority(SysTick_IRQn,0); //Приоритетпрерывания системного таймера наивысший
 
 
 
@@ -327,6 +337,37 @@ static void DMA_Configuration(void) //Инициализация каналов DMA
      DMA_ITConfig(DMA1_Channel1, DMA_IT_TC /*| DMA_IT_HT*/, ENABLE);
          
      DMA_Cmd(DMA1_Channel1, ENABLE);// Включаем первый канал DMA1
+     
+     /*USART1_TX-Канал 4*/
+  DMA_DeInit(DMA1_Channel4);  //Сброс настроек канала 4
+  
+  DMA_InitStructure.DMA_PeripheralBaseAddr = 0x40013804; //Базовый адрес регистра данных USART1
+  DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)TxBuffer; //Передающий буфер USART1
+  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST; //Направление данных из памяти к перефирии
+  DMA_InitStructure.DMA_BufferSize = BufferSize; //Размер буфера
+  DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable; //Инкремент перефирийного регистра запрещен
+  DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable; //Инкремент памяти разрешен 
+  DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte; //Размер данных в перефирии 1 байт
+  DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte; //Размер данных в памяти 1 байт
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Normal; //Нормальный режим работы DMA
+  DMA_InitStructure.DMA_Priority = DMA_Priority_Low; //Приоритет  низкий
+  DMA_InitStructure.DMA_M2M = DMA_M2M_Disable; //Передача из памяти в память выключена
+  
+  DMA_Init(DMA1_Channel4 , &DMA_InitStructure); //Передаем структуру в функцию
+ // DMA_ITConfig(DMA1_Channel4, DMA_IT_TC, ENABLE); //Разрешаем прерывание по окончании передачи
+  
+  /*USART1_RX-Канал5*/
+  DMA_DeInit(DMA1_Channel5);  //Сброс настроек канала 5
+  
+  DMA_InitStructure.DMA_PeripheralBaseAddr = 0x40013804; //Базовый адрес регистра данных USART1
+  DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)RxBuffer; //Приемный буфер USART1
+  DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC; //Направление данных от периферии к памяти
+  DMA_InitStructure.DMA_BufferSize = BufferSize; //Размер буфера
+  DMA_InitStructure.DMA_Mode = DMA_Mode_Circular; //Циклический режим работы DMA
+  DMA_InitStructure.DMA_Priority = DMA_Priority_High; //Приоритет  высокий
+  
+  DMA_Init(DMA1_Channel5 , &DMA_InitStructure); //Передаем структуру в функцию
+
 }
 //==============================================================================
 static void TIMER_Configuration(void)//Инициализация таймеров
@@ -434,7 +475,49 @@ else //если у нас ещё не прошел первый цикл
      }
    }
 }
-
+//==============================================================================
+void delay_ms(uint16_t msec) //Задержка в милисекундах
+{
+ delay_Counter = msec;
+ while(delay_Counter != 0);
+  
+}
+//==============================================================================
+void SendString_InUnit(const char *str) //Функция отправки строки навнешний модуль через UART
+{
+ uint16_t len; //Длинна строки
+ uint16_t i;   //Счетчик
+ len=strlen(str); //Вычисляем длинну строки
+ 
+ for(i=0;i<len;i++)  TxBuffer[i]=*str++; //Записывем данные в буфер передачи
+  DMA_Cmd(DMA1_Channel4 , DISABLE);                 //Отключаем канал DMA
+  DMA_SetCurrDataCounter(DMA1_Channel4 , len);      //Устанавливаем счетчик DMA канала
+  DMA_ClearFlag(DMA1_FLAG_TC4);                     //Сбрасываем флаг окончания передачи
+  DMA_Cmd(DMA1_Channel4 , ENABLE );                 //Активируем DMA канал
+  while(DMA_GetFlagStatus(DMA1_FLAG_TC4)==RESET);   //Ждем окончания передачи
+  DMA_Cmd(DMA1_Channel4 , DISABLE);                 //Отключаем канал DMA
+  ClearBufer(TxBuffer);                   //Очищаем буфер 
+}
+//==============================================================================
+static void ClearBufer(char *buf) //Функция очистки буфера
+{
+ uint16_t j; //Счетчик 
+ for(j=0;j<BufferSize;j++) 
+ {
+   *buf=0x00; //Присваиваем текущему элементу значение по умолчание
+   buf++; //Инкрементируем ссылочную переменную
+ }
+}
+//==============================================================================
+void Reset_rxDMA_ClearBufer(void) //Сброс приемного DMA канала и очистка буфера приема
+{
+     DMA_Cmd(DMA1_Channel5 , DISABLE ); //Останавливаем DMA канал
+     ClearBufer(RxBuffer);                  //Очищаем буфер
+     DMA_SetCurrDataCounter(DMA1_Channel5 , BufferSize); //Ставим счетчик в размер буфера
+     DMA_Cmd(DMA1_Channel5 , ENABLE ); //Активируем DMA канал
+ 
+  
+}
 /*******************************************************************************
 ********************************************************************************
 **                                                                            **
