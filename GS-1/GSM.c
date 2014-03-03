@@ -22,7 +22,32 @@
 //==============================================================================
                   /*ФУНКЦИИ ДЛЯ РАБОТЫ С МОДЕМОМ*/
 //==============================================================================
+void GSM_Configuration(void) //Инициализация GSM
+{
+  FunctionalState stack = DISABLE; //Флаг открытия TCP/IP стека
+  uint8_t i; //Счетчик
+  char *im; //Ссылочная переменная для IMEI
+  
+ do{
+    if(GPIO_ReadInputDataBit(GSM_MOD,GSM_READY)==0)
+    {
+      delay_ms(200); 
+      GPIO_ResetBits(GSM_MOD , GSM_ON); //Включаем модем
+      delay_ms(800); 
+      GPIO_SetBits(GSM_MOD , GSM_ON);
+     }
+ 
+    else
+   {
+      GPIO_ResetBits(GSM_MOD , GSM_RESET); //Перезагружаем  модем
+      delay_ms(100);
+      GPIO_SetBits(GSM_MOD , GSM_RESET); //Устанавливакм бит сброса   
+   }
+    delay_ms(3000);
+   }while(GPIO_ReadInputDataBit(GSM_MOD,GSM_READY)==0); //Ожидание готовности 
 
+  
+}
 
 
 
