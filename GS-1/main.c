@@ -12,6 +12,7 @@
 #include "eeprom.h"
 #include "stm32f10x.h"
 #include "main.h"
+#include "GSM.h"
 #include <string.h>
 //************* Инициализация глобальных переменных ****************************
 uint32_t delay_Counter; //Интервал программы задержки

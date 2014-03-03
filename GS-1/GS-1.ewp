@@ -2018,6 +2018,12 @@
   <group>
     <name>User</name>
     <file>
+      <name>$PROJ_DIR$\GSM.c</name>
+    </file>
+    <file>
+      <name>$PROJ_DIR$\GSM.h</name>
+    </file>
+    <file>
       <name>$PROJ_DIR$\main.c</name>
     </file>
     <file>
