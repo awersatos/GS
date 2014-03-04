@@ -1,16 +1,16 @@
-"D:\GS-1\Libraries\STM32F10x_StdPeriph_Driver\src\stm32f10x_i2c.c"
+"E:\Repository\GS\GS-1\Libraries\STM32F10x_StdPeriph_Driver\src\stm32f10x_i2c.c"
 -std=c99
 -ferror-limit=100
 -I
-D:\GS-1
+E:\Repository\GS\GS-1
 -I
-D:\GS-1\Libraries\STM32F10x_StdPeriph_Driver\inc
+E:\Repository\GS\GS-1\Libraries\STM32F10x_StdPeriph_Driver\inc
 -I
-D:\GS-1\Libraries\CMSIS\CM3\CoreSupport
+E:\Repository\GS\GS-1\Libraries\CMSIS\CM3\CoreSupport
 -I
-D:\GS-1\Libraries\CMSIS\CM3\DeviceSupport\ST\STM32F10x
+E:\Repository\GS\GS-1\Libraries\CMSIS\CM3\DeviceSupport\ST\STM32F10x
 -I
-D:\GS-1\Libraries\EEPROM
+E:\Repository\GS\GS-1\Libraries\EEPROM
 -I
 C:\Program Files\IAR Systems\Embedded Workbench 6.5\arm\CMSIS\Include
 -I
@@ -18,15 +18,15 @@ C:\Program Files\IAR Systems\Embedded Workbench 6.5\arm\inc
 -I
 C:\Program Files\IAR Systems\Embedded Workbench 6.5\arm\inc\c
 -I
-D:\GS-1
+E:\Repository\GS\GS-1
 -I
-D:\GS-1\Libraries\STM32F10x_StdPeriph_Driver\inc
+E:\Repository\GS\GS-1\Libraries\STM32F10x_StdPeriph_Driver\inc
 -I
-D:\GS-1\Libraries\CMSIS\CM3\CoreSupport
+E:\Repository\GS\GS-1\Libraries\CMSIS\CM3\CoreSupport
 -I
-D:\GS-1\Libraries\CMSIS\CM3\DeviceSupport\ST\STM32F10x
+E:\Repository\GS\GS-1\Libraries\CMSIS\CM3\DeviceSupport\ST\STM32F10x
 -I
-D:\GS-1\Libraries\EEPROM
+E:\Repository\GS\GS-1\Libraries\EEPROM
 -I
 C:\Program Files\IAR Systems\Embedded Workbench 6.5\arm\CMSIS\Include
 -DUSE_STDPERIPH_DRIVER=0
@@ -224,8 +224,8 @@ C:\Program Files\IAR Systems\Embedded Workbench 6.5\arm\CMSIS\Include
 -D__HAS_LOCATED_DECLARATION__=1
 -D__HAS_LOCATED_WITH_INIT__=1
 -D__IAR_COMPILERBASE__=593160
--D__DATE__="Feb 26 2014"
--D__TIME__="14:48:25"
+-D__DATE__="Mar  3 2014"
+-D__TIME__="21:01:56"
 -D__STDC__=1
 -D__STDC_VERSION__=199901L
 -D__STDC_HOSTED__=1
