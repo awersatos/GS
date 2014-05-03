@@ -24,6 +24,9 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x_it.h"
 #include "main.h"
+#include "eeprom.h"
+#include "GSM.h"    
+#include <string.h>
 /** @addtogroup STM32F10x_StdPeriph_Template
   * @{
   */
@@ -146,39 +149,265 @@ void SysTick_Handler(void)
 
 void EXTI9_5_IRQHandler(void) //Внешние прерывания линии 5-9
 {
- if(EXTI_GetITStatus(EXTI_Line5) != RESET) 
+ if(EXTI_GetITStatus(EXTI_Line5) != RESET) //220V Вход газоанализатора
   {
-  if (typ_pin[10] == 1) error |= 4;   // если включен газоанализатор на данный пин
-                                      // ОШИБКА сработал газоанализатор
+  EE_ReadVariable(VirtAddVarTab[SETTINGS], &TEMP);
+     if((TEMP & 1) !=0)
+     {
+     EE_ReadVariable(VirtAddVarTab[ERROR], &TEMP);  
+     TEMP|=(1<<8);
+     EE_WriteVariable(VirtAddVarTab[ERROR], TEMP);
+     }
     
   EXTI_ClearITPendingBit(EXTI_Line5); //Очистка флага прерывания
   }
   
 //------------------------------------------------------------------------------  
   
- if(EXTI_GetITStatus(EXTI_Line6) != RESET) 
+ if(EXTI_GetITStatus(EXTI_Line6) != RESET) //12V Вход газоанализатора
   {
-  if (typ_pin[11] == 1) error |= 2; // если включен газоанализатор на данный пин
-                                    //ОШИБКА сработал газоанализатор     
+  EE_ReadVariable(VirtAddVarTab[SETTINGS], &TEMP);
+     if((TEMP & (1<<1)) !=0)
+     {
+     EE_ReadVariable(VirtAddVarTab[ERROR], &TEMP);  
+     TEMP|=(1<<8);
+     EE_WriteVariable(VirtAddVarTab[ERROR], TEMP);
+     }  
   EXTI_ClearITPendingBit(EXTI_Line6); //Очистка флага прерывания
   }
-
+//------------------------------------------------------------------------------
+if(EXTI_GetITStatus(EXTI_Line9) != RESET) //Установка телефонных номеров
+  {
+    
+    delay_ms(500);
+    SendString_InUnit("ATH\r\n"); 
+   if(DiviceStatus == 1 )
+   {
+    if(strstr(RxBuffer , "RING") !=NULL) 
+    {
+      char *s;
+      char b0, b1;
+      s = strstr(RxBuffer , "+79");
+      EE_ReadVariable(VirtAddVarTab[ERROR], &TEMP);
+      TEMP &= (1<<15);
+      if(TEMP == 0)
+      {
+       
+        for(uint8_t i=0;i<6;i++)
+       {
+        b0 = *s++;
+        b1 = *s++;
+        TEMP = ((uint16_t)b1<<8) | (uint16_t)b0;
+        EE_WriteVariable(VirtAddVarTab[PHONE1+i], TEMP);
+       
+       }
+      TEMP = (1<<15);
+      EE_WriteVariable(VirtAddVarTab[ERROR], TEMP);
+      SET_ALARM(120);
+      delay_ms(500);
+      SEND_SMS(NUMBER_SET, PHONE1);
+      }
+      else
+      {
+       delay_ms(10); 
+       EE_ReadVariable(VirtAddVarTab[ERROR], &TEMP); 
+       TEMP &= (1<<14);
+        if(TEMP == 0)
+       {
+       
+         for(uint8_t i=0;i<6;i++)
+        {
+         b0 = *s++;
+         b1 = *s++;
+         TEMP = ((uint16_t)b1<<8) | (uint16_t)b0;
+         EE_WriteVariable(VirtAddVarTab[PHONE2+i], TEMP);
+       
+        }
+        EE_ReadVariable(VirtAddVarTab[ERROR], &TEMP);
+        TEMP |= (1<<14);
+        EE_WriteVariable(VirtAddVarTab[ERROR], TEMP);
+        delay_ms(500);
+        SEND_SMS(NUMBER_SET, PHONE2);
+       }
+      
+      }
+    //  EE_ReadVariable(VirtAddVarTab[ERROR], &TEMP);
+      
+    }
+     
+   }
+    delay_ms(500);
+    Reset_rxDMA_ClearBufer(); //Сброс буфера
+    EXTI_ClearITPendingBit(EXTI_Line9); //Очистка флага прерывания
+  }
 }
 //==============================================================================
-void TIM3_IRQHandler(void) //Прерывания таймера 3
+void TIM4_IRQHandler(void) //Прерывания таймера 3
 {
 //if (timmin[index]!=0)
-timmin[index] = timmin[index]+1;
-GPIO_SetBits(GPIOC, GPIO_Pin_2);
+//timmin[index] = timmin[index]+1;
+if(Led1_state > 3)
+{
+  switch(Led1_state)
+  {
+    case BLINK_RED:
+     if(GPIO_ReadOutputDataBit(GPIOC, GPIO_Pin_2) == 0)
+     {
+      GPIO_SetBits(GPIOC, GPIO_Pin_2);
+      GPIO_ResetBits(GPIOC, GPIO_Pin_3); 
+     }
+    else
+     {
+     GPIO_ResetBits(GPIOC, GPIO_Pin_3);
+     GPIO_ResetBits(GPIOC, GPIO_Pin_2); 
+     } 
+    break; 
+    
+    case BLINK_GREN:
+     if(GPIO_ReadOutputDataBit(GPIOC, GPIO_Pin_3) == 0)
+     {
+      GPIO_SetBits(GPIOC, GPIO_Pin_3);
+      GPIO_ResetBits(GPIOC, GPIO_Pin_2); 
+     }
+    else
+     {
+     GPIO_ResetBits(GPIOC, GPIO_Pin_3);
+     GPIO_ResetBits(GPIOC, GPIO_Pin_2); 
+     } 
+    break;
+    
+    case BLINK_RED_GREEN:
+     if(GPIO_ReadOutputDataBit(GPIOC, GPIO_Pin_3) == 0)
+     {
+      GPIO_SetBits(GPIOC, GPIO_Pin_3);
+      GPIO_ResetBits(GPIOC, GPIO_Pin_2); 
+     }
+    else
+     {
+     GPIO_SetBits(GPIOC, GPIO_Pin_2);
+     GPIO_ResetBits(GPIOC, GPIO_Pin_3); 
+     } 
+    break;       
+    
+  }
+}
 
-TIM_ClearITPendingBit(TIM3, TIM_IT_CC1); //Сбрасываем флаг UIF
+if(Led2_state > 3)
+{
+  switch(Led2_state)
+  {
+    case BLINK_RED:
+     if(GPIO_ReadOutputDataBit(GPIOC, GPIO_Pin_4) == 0)
+     {
+      GPIO_SetBits(GPIOC, GPIO_Pin_4);
+      GPIO_ResetBits(GPIOC, GPIO_Pin_5); 
+     }
+    else
+     {
+     GPIO_ResetBits(GPIOC, GPIO_Pin_5);
+     GPIO_ResetBits(GPIOC, GPIO_Pin_4); 
+     } 
+    break; 
+    
+    case BLINK_GREN:
+     if(GPIO_ReadOutputDataBit(GPIOC, GPIO_Pin_5) == 0)
+     {
+      GPIO_SetBits(GPIOC, GPIO_Pin_5);
+      GPIO_ResetBits(GPIOC, GPIO_Pin_4); 
+     }
+    else
+     {
+     GPIO_ResetBits(GPIOC, GPIO_Pin_5);
+     GPIO_ResetBits(GPIOC, GPIO_Pin_4); 
+     } 
+    break;
+    
+    case BLINK_RED_GREEN:
+     if(GPIO_ReadOutputDataBit(GPIOC, GPIO_Pin_5) == 0)
+     {
+      GPIO_SetBits(GPIOC, GPIO_Pin_5);
+      GPIO_ResetBits(GPIOC, GPIO_Pin_4); 
+     }
+    else
+     {
+     GPIO_SetBits(GPIOC, GPIO_Pin_4);
+     GPIO_ResetBits(GPIOC, GPIO_Pin_5); 
+     } 
+    break;       
+    
+  }  
+  
+}
+
+
+
+TIM_ClearITPendingBit(TIM4 , TIM_IT_Update); //Очистка флага прерывания
 }
 //==============================================================================
 void DMA1_Channel1_IRQHandler(void)
 {
-  
+ DMA_ClearITPendingBit(DMA1_IT_GL1); 
 }
+//==============================================================================
+void RTC_IRQHandler(void) //Прерывания от часов реального времени
+{
+  if (RTC_GetITStatus(RTC_IT_SEC) != RESET)
+  {
+    thermostat_timer++;
+    RTC_ClearITPendingBit(RTC_FLAG_SEC);
+  }
+//------------------------------------------------------------------------------
+  if (RTC_GetITStatus(RTC_IT_ALR) != RESET) //Прерывание ALARM
+  {
+   
+   if((DiviceStatus & 0x01) == 1) DiviceStatus &= ~0x01;
+   
+    if(((DiviceStatus & (1<<2)) != 0) && ((DiviceStatus & (1<<1)) == 0))
+   {SEND_SMS(VOLTAGE_MISSING_3H, PHONE1);
+   }
+   
+   if((DiviceStatus & (1<<1)) != 0)
+   {
+    EE_ReadVariable(VirtAddVarTab[SETTINGS], &TEMP); 
+    if((TEMP & (1<<11)) != 0)
+    {
+      SEND_SMS(VOLTAGE_MISSING, PHONE1);
+     
+    }
+     DiviceStatus |= (1<<2);
+     DiviceStatus &= ~(1<<1);
+     SET_ALARM(10800); //Установка на 3 часа
+   }
+   
+  
+    RTC_ClearITPendingBit(RTC_IT_ALR);
+  }
 
+}
+//==============================================================================
+void EXTI1_IRQHandler(void) //Прерывание контроля питания
+{
+  delay_ms(10);
+  if(GPIO_ReadInputDataBit(GPIOC, GPIO_Pin_1) == 1) //Питание присутствует
+  {
+    LED(1, GREEN);
+    if((DiviceStatus & (1<<2)) != 0)
+    {
+     SEND_SMS(VOLTAGE_ON, PHONE1); 
+     
+    }
+    DiviceStatus &= ~(0x03<<1);
+  }
+  else //Питание отсутствует
+  {
+   LED(1, BLINK_RED); 
+   DiviceStatus |= (1<<1);
+   SET_ALARM(120);
+  }
+  
+ EXTI_ClearITPendingBit(EXTI_Line1); //Очистка флага прерывания  
+}
+//==============================================================================
 /**
   * @brief  This function handles PPP interrupt request.
   * @param  None

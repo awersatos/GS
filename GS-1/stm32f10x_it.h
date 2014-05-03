@@ -46,8 +46,9 @@ void PendSV_Handler(void);
 void SysTick_Handler(void);
 
 void EXTI9_5_IRQHandler(void); //Внешние прерывания линии 5-9
-void TIM3_IRQHandler(void); //Прерывания таймера 3
+void TIM4_IRQHandler(void); //Прерывания таймера 3
 void DMA1_Channel1_IRQHandler(void);
+void EXTI0_IRQHandler(void); //Прерывание контроля питания
 #ifdef __cplusplus
 }
 #endif
