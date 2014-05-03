@@ -31,7 +31,7 @@ uint16_t TEMP; //Временная переменная
 
 uint16_t DiviceStatus = 0; //Статус активных аварий
 
-uint16_t temp_mem, max[8], min[8] /*, timmin[8-1]*/ ;
+uint16_t temp_mem, max, min[16] /*, timmin[8-1]*/ ;
 
 uint8_t count, index, state;
 
@@ -111,7 +111,7 @@ GSM_Configuration(); //Конфигурирование модема
 index=0;
 count=0;
 state=0;
-max[0]=adc_buffer[8]; //PB0
+max=adc_buffer[8]; //PB0
 min[0]=adc_buffer[8]; //PB0
 temp_mem=adc_buffer[8];
 
@@ -151,6 +151,8 @@ LED(2, GREEN);
    RECEIVE_SMS(); //Функция получения СМС сообщения
    delay_ms(1000);
    Dathiki();
+  TEMP_CTRL(adc_buffer[8]);
+  
   
   ERROR_EXEC();
   OUT_EXEC();
@@ -162,7 +164,7 @@ LED(2, GREEN);
   t1 = TEMP_InGrad(1);
   t2 = TEMP_InGrad(2);
   
-  TEMP_CTRL(adc_buffer[8]);
+  
   }//Конец основного цикла
 }
 //==============================================================================
@@ -1224,7 +1226,7 @@ static void Thermostat(void) //Функция термостата
 //==============================================================================
 static void TEMP_CTRL(uint16_t temp) //Функция контроля температуры теплоносителя
 {
- if (temp > max[index]) max[index]=temp; //наростает максимум текущего цикла
+ if (temp > max) max=temp; //наростает максимум текущего цикла
  if (temp < min[index]) min[index]=temp; //наростает минимум текущего цикла
 
  if(count > 10) //Каждые 10 вызовов функции проверка фазы температуры
@@ -1240,39 +1242,54 @@ static void TEMP_CTRL(uint16_t temp) //Функция контроля температуры теплоносител
  }
  else count++;
  
- if(((state & 0x03) == 1) && (temp < (max[index] + min[index])/2)) state |= (1<<2); //Фиксируем минимум
- else if(((state & 0x03) == 2) && (temp > (max[index] + min[index])/2)) state |= (1<<3); //Фиксируем максимум
+ if(((state & 0x03) == 1) && (temp < (max + min[index])/2) && (temp > (max + min[index])/4)) state |= (1<<2); //Фиксируем минимум
+ else if(((state & 0x03) == 2) && (temp > (max + min[index])/2)&& (temp < ((max + min[index])/4)*3)) state |= (1<<3); //Фиксируем максимум
  
  if(((state & 0x0C)>>2) == 3) //Если зафиксированы минимум и максимум переход на следующий цикл
  {
    state &= 0x80;
    index++;
-   if(index > 7)
+   if(index > 15)
    {
     index = 0;
     state |= 0x80; //Буфер заполнен можно анализировать
    }
-   max[index]=temp;
+   max=temp;
    min[index]=temp;
  }
  
+ EE_ReadVariable(VirtAddVarTab[ERROR], &TEMP);
  if((state & 0x80) != 0) //Рассчет порога температуры и проверка аварии
  {
    uint32_t TempThreshold =0;//Порог аварии температуры
-   for(uint8_t i=0;i<8;i++) TempThreshold = TempThreshold+min[i]; //Находим сумму минимумов
-   TempThreshold = TempThreshold/8; //Находим среднее минимальное
+   for(uint8_t i=0;i<16;i++) if(i != index) TempThreshold = TempThreshold+min[i]; //Находим сумму минимумов
+   TempThreshold = TempThreshold/15; //Находим среднее минимальное
    TempThreshold = TempThreshold -(TempThreshold/10); //Устанавливаем значение порога на 10% ниже среднеминимального
     if(temp < TempThreshold) //Если температура ниже порога формируем аварию
     {
-      EE_ReadVariable(VirtAddVarTab[ERROR], &TEMP);
+     // EE_ReadVariable(VirtAddVarTab[ERROR], &TEMP);
       if((TEMP & (1<<9)) ==0)
       {
         TEMP |= (1<<9);
         EE_WriteVariable(VirtAddVarTab[ERROR], TEMP);
       }
     }
+    else if((TEMP & (1<<9)) !=0)
+   {
+    TEMP &= ~(1<<9);
+    EE_WriteVariable(VirtAddVarTab[ERROR], TEMP); 
+    error_stat &= ~(1<<9);
+   }
+
+    
  }
  
+else if((TEMP & (1<<9)) !=0)
+{
+  TEMP &= ~(1<<9);
+  EE_WriteVariable(VirtAddVarTab[ERROR], TEMP); 
+  
+}
   
 }
 /*******************************************************************************

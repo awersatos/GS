@@ -38,7 +38,7 @@ extern LedMode_TypeDef Led1_state, Led2_state; //Состояние светодиодов
 extern uint32_t delay_Counter; //Интервал программы задержки
 extern char TxBuffer[BufferSize+1]; //Передающий Bluetooth буфер USART1
 extern char RxBuffer[BufferSize+1]; //Приемный Bluetooth буфер USART1
-extern uint16_t max[8], min[8] /*, timmin[8-1]*/;
+extern uint16_t max, min[16] /*, timmin[8-1]*/;
 //extern uint32_t error;
 extern uint8_t index;
 extern uint16_t typ_pin[13-1];
